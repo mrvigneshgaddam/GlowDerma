@@ -1,8 +1,30 @@
 import express from "express";
+import { rateLimit } from "express-rate-limit";
+import fs from 'fs';
 
 const app = express();
 let PORT = 5000;
+
+const limiter = rateLimit({
+    windowMs:1000*60*5,
+    max : 5,
+    message: "Sorry you have exhausted your plan"
+})
+
+// app.use("/cart",limiter);
 app.use(express.json())
+
+app.use((req, res,next) => {
+    let logdata =`${new Date()} | ${req.method} | ${req.url}\n`
+    console.log(logdata)
+    fs.appendFile("log.txt",logdata,(err)=>{
+        if(err) throw err;
+    })
+    next();
+})
+
+app.use("/assets",express.static('public'))
+
 app.get("/", (req, res) => {
     res.send("Welcome to GlowDerma - Your Skincare Journey Begins Here.")
 })
@@ -101,10 +123,21 @@ app.get("/order/:orderID", (req, res) => {
     res.json(order);
 })
 
+
+
 app.get("*", (req, res) => {
     res.send(`Your port is not available`)
 })
 
+app.use((error, req, res)=>{
+    res.status(500).json({
+        "error": error.message
+    })
+})
+
+app.use((req,res,next)=>{
+    return res.status(400).json(`We don't have this page yet!`)
+})
 
 app.listen(PORT, () => {
     console.log(`server is running on port http://localhost:${PORT}`);
